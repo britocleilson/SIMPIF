@@ -1,0 +1,96 @@
+config:
+  target: "http://localhost:8080"  # Altere para o endereço da aplicação
+  phases:
+    - duration: 60
+      arrivalRate: 10
+  defaults:
+    headers:
+      Content-Type: "application/json"
+
+scenarios:
+  - name: Simulação Online Boutique
+    weight: 20
+    flow:
+      - function: set_random_product
+      - get:
+          url: "/product/{{ product_id }}"
+
+  - name: Alterar Moeda
+    weight: 2
+    flow:
+      - function: set_random_currency
+      - post:
+          url: "/setCurrency"
+          json:
+            currency_code: "{{ currency }}"
+
+  - name: Adicionar ao Carrinho
+    weight: 2
+    flow:
+      - function: set_random_product
+      - get:
+          url: "/product/{{ product_id }}"
+      - post:
+          url: "/cart"
+          json:
+            product_id: "{{ product_id }}"
+            quantity: "{{ quantity }}"
+
+  - name: Visualizar Carrinho
+    weight: 4
+    flow:
+      - get:
+          url: "/cart"
+
+  - name: Checkout
+    weight: 1
+    flow:
+      - function: set_random_product
+      - get:
+          url: "/product/{{ product_id }}"
+      - post:
+          url: "/cart"
+          json:
+            product_id: "{{ product_id }}"
+            quantity: "{{ quantity }}"
+      - post:
+          url: "/cart/checkout"
+          headers:
+            Content-Type: "application/x-www-form-urlencoded"
+            Referer: "http://localhost:8080/cart"
+          form:
+            email: "someone@example.com"
+            street_address: "1600 Amphitheatre Parkway"
+            zip_code: "94043"
+            city: "Mountain View"
+            state: "CA"
+            country: "United States"
+            credit_card_number: "4432801561520454"
+            credit_card_expiration_month: "1"
+            credit_card_expiration_year: "2026"
+            credit_card_cvv: "672"
+
+  - name: Atualizar Frontend
+    weight: 1
+    flow:
+      - get:
+          url: "/"
+
+processor:
+  functions:
+    set_random_product:
+      function: |
+        const products = [
+          "0PUK6V6EV0", "1YMWWN1N4O", "2ZYFJ3GM2N", "66VCHSJNUP",
+          "6E92ZMYYFZ", "9SIQT8TOJO", "L9ECAV7KIM", "LS4PSXUNUM",
+          "OLJCESPC7Z"
+        ];
+        const product = products[Math.floor(Math.random() * products.length)];
+        const qty = Math.floor(Math.random() * 3) + 1;
+        return { product_id: product, quantity: qty };
+
+    set_random_currency:
+      function: |
+        const currencies = ["EUR", "USD", "JPY", "GBP", "TRY", "CAD"];
+        const currency = currencies[Math.floor(Math.random() * currencies.length)];
+        return { currency };
